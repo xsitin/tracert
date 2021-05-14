@@ -1,18 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 using static System.Console;
 
 namespace tracert
 {
     class Program
     {
-        public static void Main(string[] args)
+        public static void Main()
         {
             var ping = new Ping();
             var opt = new PingOptions(1, true);
@@ -22,12 +21,12 @@ namespace tracert
                 ans = ping.Send(new IPAddress(new byte[] {8, 8, 8, 8}), 1000, Array.Empty<byte>(), opt);
                 WriteLine(ans.Status == IPStatus.TimedOut
                     ? $"{opt.Ttl}. *\n"
-                    : $"{opt.Ttl}. {ans.Address}\n{ParseNetNameASCountry(WhoisServerRequest(ans.Address.ToString(), "whois.iana.org"))}\n");
+                    : $"{opt.Ttl}. {ans.Address}\n{ParsePrintingData(WhoisServerRequest(ans.Address.ToString(), "whois.iana.org"))}\n");
                 opt.Ttl++;
             } while (ans.Status != IPStatus.Success);
         }
 
-        static string ParseNetNameASCountry(string whois)
+        static string ParsePrintingData(string whois)
         {
             whois = whois.ToUpperInvariant();
             var values =
@@ -44,14 +43,9 @@ namespace tracert
             socket.Connect(serverAddres, ip);
             var arinAddition = serverAddres == "whois.arin.net" ? "+ z " : "";
             socket.Send(Encoding.UTF8.GetBytes($"{arinAddition}{endpoint}\r\n"));
-            var buffer = new byte[4096];
-            var counter = 4096;
-            var result = "";
-            while (counter > 0)
-            {
-                counter = socket.Receive(buffer);
-                result += Encoding.UTF8.GetString(buffer[..counter]);
-            }
+            using var reader = new StreamReader(new BufferedStream(new NetworkStream(socket)));
+            var result = reader.ReadToEnd();
+            socket.Close();
 
             var refer = result.Split("\n", StringSplitOptions.RemoveEmptyEntries)
                 .FirstOrDefault(x => x.StartsWith("refer"));
