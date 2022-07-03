@@ -41,10 +41,13 @@ namespace tracert
         static string ParsePrintingData(string whois)
         {
             whois = whois.ToUpperInvariant();
-            var values =
-                whois.Split("\n", StringSplitOptions.RemoveEmptyEntries).Where(x =>
-                    x.StartsWith("COUNTRY") || x.StartsWith($"NETNAME") || x.StartsWith("ORIGIN")).ToArray();
             var headers = new[] {"NETNAME", "ORIGIN", "COUNTRY"};
+            var values =
+                whois
+                    .Split("\n", StringSplitOptions.RemoveEmptyEntries)
+                    .Where(x =>headers.Any(x.StartsWith))
+                    .ToArray();
+            
             var parameters = new List<string>();
             foreach (var header in headers)
             {
